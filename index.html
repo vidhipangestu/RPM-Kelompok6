@@ -1,0 +1,669 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Gerbang RPM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Tata letak: lorong dilihat dari atas, grafik cacah sejajar dengan posisi truk, kontrol di kolom samping, tombol jalan menempel di bawah */
+:root {
+  --bg: #e9eeea;
+  --surface: #f6f8f5;
+  --surface-2: #dde4de;
+  --road: #cfd8d1;
+  --ink: #15211c;
+  --muted: #53635b;
+  --line: #c3cdc5;
+  --accent: #0d6f75;
+  --accent-ink: #ffffff;
+  --alarm: #c4311b;
+  --ok: #1d7a4b;
+  --amber: #b97a00;
+  --font-display: 'Big Shoulders Display', 'Arial Narrow', Impact, sans-serif;
+  --font-body: 'Public Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1412; --surface: #141d1a; --surface-2: #1d2926; --road: #1a2522;
+    --ink: #e3ebe6; --muted: #8fa198; --line: #2b3a35;
+    --accent: #4cc2c8; --accent-ink: #06201f; --alarm: #ff6b4f; --ok: #4fc98c; --amber: #f0b93a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1412; --surface: #141d1a; --surface-2: #1d2926; --road: #1a2522;
+  --ink: #e3ebe6; --muted: #8fa198; --line: #2b3a35;
+  --accent: #4cc2c8; --accent-ink: #06201f; --alarm: #ff6b4f; --ok: #4fc98c; --amber: #f0b93a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+  padding-inline: 16px; padding-block: 20px 0;
+}
+.wrap { max-width: 1180px; margin-inline: auto; display: flex; flex-direction: column; gap: 20px; }
+h1, h2, h3, p { margin: 0; }
+
+.hdr { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; }
+.hdr > div { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.eyebrow { font: 500 11px/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+h1 { font: 800 clamp(2.6rem, 7vw, 4.2rem)/.9 var(--font-display); letter-spacing: .015em; text-transform: uppercase; text-wrap: balance; }
+.lead { max-width: 56ch; color: var(--muted); }
+.tag { font: 500 11px/1.3 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; border: 1px solid var(--line); padding: 6px 10px; border-radius: 3px; color: var(--muted); background: var(--surface); }
+
+.mission { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; justify-content: space-between; padding: 12px 14px; border: 1px solid var(--amber); border-radius: 4px; background: var(--surface); }
+.mission p { min-width: 0; flex: 1 1 260px; }
+.mission strong { font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--amber); }
+
+.layout { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 880px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+.stage { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.stage canvas { display: block; width: 100%; height: auto; }
+.stage .gcap { display: flex; justify-content: space-between; gap: 8px; padding: 4px 10px 8px; font: 400 11px/1.3 var(--font-mono); color: var(--muted); }
+
+.readout { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-block: 1px solid var(--line); }
+.readout > div { padding: 10px 12px; min-width: 0; }
+.readout > div + div { border-left: 1px solid var(--line); }
+.rl { font: 500 10.5px/1.2 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.rv { font: 800 clamp(1.7rem, 5vw, 2.5rem)/1.05 var(--font-display); letter-spacing: .01em; font-variant-numeric: tabular-nums; margin-top: 2px; }
+.rv small { font: 500 11px var(--font-mono); letter-spacing: 0; color: var(--muted); margin-left: 4px; }
+.stat { display: flex; align-items: center; gap: 8px; }
+.lamp { width: 11px; height: 11px; border-radius: 50%; background: var(--tone, var(--muted)); flex: none; }
+[data-tone="idle"] { --tone: var(--muted); }
+[data-tone="ready"] { --tone: var(--ok); }
+[data-tone="run"] { --tone: var(--accent); }
+[data-tone="alarm"] { --tone: var(--alarm); }
+[data-tone="warn"] { --tone: var(--amber); }
+.stat .rv { color: var(--tone, var(--ink)); font-size: clamp(1.3rem, 4vw, 2rem); }
+@media (prefers-reduced-motion: no-preference) {
+  [data-tone="alarm"] .lamp { animation: blink .5s steps(2, jump-none) infinite; }
+  @keyframes blink { 50% { opacity: .25; } }
+}
+
+fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+fieldset:disabled { opacity: .55; }
+.controls { display: flex; flex-direction: column; gap: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px; }
+.group { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.glabel { font: 500 11px/1.2 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.frow { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.frow label { font-weight: 600; }
+.val { font: 500 13px var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; }
+.hint { font-size: 12.5px; color: var(--muted); }
+input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; margin: 0; }
+select { width: 100%; min-height: 40px; padding: 8px 10px; font: inherit; background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 4px; }
+
+.seg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.seg label { position: relative; display: block; }
+.seg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.seg span { display: block; text-align: center; padding: 10px 6px; font: 500 13px var(--font-mono); background: var(--bg); color: var(--ink); border-left: 1px solid var(--line); }
+.seg label:first-child span { border-left: 0; }
+.seg input:checked + span { background: var(--accent); color: var(--accent-ink); }
+.seg input:focus-visible + span { outline: 2px solid var(--ink); outline-offset: -3px; }
+.seg input:disabled { cursor: not-allowed; }
+
+.btn { font: 600 14px var(--font-body); min-height: 44px; padding: 0 16px; border-radius: 4px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; }
+.btn:hover:not(:disabled) { border-color: var(--ink); }
+.btn:focus-visible, select:focus-visible, input[type=range]:focus-visible, .chk input:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.btn:disabled { cursor: not-allowed; opacity: .6; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.sm { min-height: 38px; padding: 0 12px; font-size: 13px; text-align: left; }
+.presets { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.result { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.rh { font: 800 clamp(1.6rem, 4vw, 2.1rem)/1 var(--font-display); text-transform: uppercase; letter-spacing: .02em; color: var(--tone, var(--ink)); }
+.result p { max-width: 62ch; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px 16px; margin: 0; }
+.stats div { min-width: 0; }
+.stats dt { font: 500 10.5px/1.2 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.stats dd { margin: 2px 0 0; font: 500 15px var(--font-mono); font-variant-numeric: tabular-nums; }
+.logwrap { overflow-x: auto; border-top: 1px solid var(--line); padding-top: 8px; }
+table { border-collapse: collapse; width: 100%; font: 400 12.5px var(--font-mono); font-variant-numeric: tabular-nums; }
+th { text-align: left; font-weight: 500; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; font-size: 10.5px; }
+th, td { padding: 5px 10px 5px 0; white-space: nowrap; }
+td.t-alarm { color: var(--alarm); }
+td.t-warn { color: var(--amber); }
+td.t-ok { color: var(--ok); }
+
+details { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 12px 16px; margin-bottom: 20px; }
+summary { cursor: pointer; font-weight: 600; }
+details p { margin-top: 8px; color: var(--muted); max-width: 80ch; font-size: 13.5px; }
+
+.runbar { position: sticky; bottom: 0; z-index: 5; margin-inline: -16px; padding: 10px 16px; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); background: var(--surface); border-top: 1px solid var(--line); }
+.runbar .in { max-width: 1180px; margin-inline: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.runbar .primary { flex: 1 1 200px; font-size: 16px; min-height: 48px; }
+.chk { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); min-height: 40px; }
+.chk input { width: 18px; height: 18px; accent-color: var(--accent); margin: 0; }
+</style>
+
+<main class="wrap">
+  <header class="hdr">
+    <div>
+      <span class="eyebrow">Perancangan Sistem Fisika · Kelompok 6</span>
+      <h1>Gerbang RPM</h1>
+      <p class="lead">Lewatkan truk di antara dua panel Radiation Portal Monitor. Atur sumber, perisai, muatan, dan kecepatan, lalu lihat kapan alarm berbunyi.</p>
+    </div>
+    <span class="tag">Ilustrasi konsep · bukan hasil PHITS</span>
+  </header>
+
+  <div class="mission" id="missionBar" hidden>
+    <p><strong>Misi</strong> Bawa Cs-137 100 MBq melewati gerbang tanpa alarm. Ubah perisai timbal, posisi sumber, muatan, kecepatan, dan ambang.</p>
+    <button class="btn" id="missionOff" type="button">Akhiri misi</button>
+  </div>
+
+  <div class="layout">
+    <section class="col" aria-label="Simulasi">
+      <div class="stage">
+        <canvas id="scene" aria-label="Tampak atas lorong dengan truk dan dua panel RPM" role="img"></canvas>
+        <div class="readout" aria-live="off">
+          <div><div class="rl" id="rl-cps">Cacah (cps)</div><div class="rv"><span id="r-cps">150</span></div></div>
+          <div><div class="rl">Ambang alarm</div><div class="rv"><span id="r-thr">219</span><small>cps</small></div></div>
+          <div class="stat" id="stat" data-tone="ready"><div><div class="rl">Status</div><div class="rv" style="display:flex;align-items:center;gap:8px"><span class="lamp"></span><span id="r-stat">Siaga</span></div></div></div>
+        </div>
+        <canvas id="graph" aria-label="Grafik cacah terhadap posisi sumber" role="img"></canvas>
+        <div class="gcap"><span>Posisi sumber terhadap panel (m)</span><span>Garis tipis: nilai teoritis · area: cacah terukur</span></div>
+      </div>
+
+      <div class="result" id="result" role="status" aria-live="polite"></div>
+    </section>
+
+    <section class="col" aria-label="Pengaturan">
+      <fieldset id="controls" class="controls">
+        <div class="group">
+          <span class="glabel">Sumber radioaktif</span>
+          <div class="seg" role="radiogroup" aria-label="Pilih sumber">
+            <label><input type="radio" name="src" value="none" id="src-none"><span>Tanpa</span></label>
+            <label><input type="radio" name="src" value="cs" id="src-cs" checked><span>Cs-137</span></label>
+            <label><input type="radio" name="src" value="co" id="src-co"><span>Co-60</span></label>
+          </div>
+        </div>
+
+        <div class="group">
+          <div class="frow"><label for="act">Aktivitas</label><span class="val" id="actV">100 MBq</span></div>
+          <input type="range" id="act" min="0" max="3" step="0.05" value="2">
+        </div>
+
+        <div class="group">
+          <div class="frow"><label for="pb">Perisai timbal</label><span class="val" id="pbV">0 mm</span></div>
+          <input type="range" id="pb" min="0" max="60" step="1" value="0">
+        </div>
+
+        <div class="group">
+          <label for="cargo" style="font-weight:600">Muatan kontainer</label>
+          <select id="cargo">
+            <option value="0">Kosong</option>
+            <option value="40">Barang umum (setara baja 40 mm)</option>
+            <option value="120">Logam padat (setara baja 120 mm)</option>
+          </select>
+        </div>
+
+        <div class="group">
+          <div class="frow"><label for="off">Posisi sumber di kontainer</label><span class="val" id="offV">tengah</span></div>
+          <input type="range" id="off" min="-0.9" max="0.9" step="0.1" value="0">
+          <span class="hint">Geser ke salah satu sisi untuk mendekatkan sumber ke satu panel.</span>
+        </div>
+
+        <div class="group">
+          <div class="frow"><label for="spd">Kecepatan truk</label><span class="val" id="spdV">8 km/jam</span></div>
+          <input type="range" id="spd" min="4" max="30" step="1" value="8">
+        </div>
+
+        <div class="group">
+          <div class="frow"><label for="k">Ambang alarm (k × σ latar)</label><span class="val" id="kV">4,0 σ</span></div>
+          <input type="range" id="k" min="3" max="6" step="0.5" value="4">
+          <span class="hint" id="fa"></span>
+        </div>
+
+        <div class="group">
+          <span class="glabel">Skenario cepat</span>
+          <div class="presets">
+            <button class="btn sm" type="button" data-preset="cs-bare">Cs-137 telanjang</button>
+            <button class="btn sm" type="button" data-preset="co-lead">Co-60 + timbal 30 mm</button>
+            <button class="btn sm" type="button" data-preset="cs-cargo">Cs-137 di logam padat</button>
+            <button class="btn sm" type="button" data-preset="fast">Cs-137, timbal 10 mm, 30 km/jam</button>
+            <button class="btn sm" type="button" data-preset="bg">Latar saja, k = 3</button>
+          </div>
+          <button class="btn" type="button" id="missionOn">Mulai misi: lolos tanpa alarm</button>
+        </div>
+      </fieldset>
+    </section>
+  </div>
+
+  <details>
+    <summary>Asumsi model</summary>
+    <p>Sumber dianggap titik. Laju hitung tiap panel = 8 cps·m²/MBq × faktor sumber × redaman ÷ jarak², lalu kedua panel dijumlahkan. Jarak vertikal sumber ke tengah panel 0,8 m. Faktor sumber Cs-137 = 1 dan Co-60 = 3,9 (perbandingan kasar konstanta laju dosis). Redaman eksponensial dengan HVL timbal 6,5 mm (Cs-137) dan 12 mm (Co-60), HVL baja 16 mm dan 21 mm, tanpa faktor build-up. Latar 150 cps, dicacah tiap 0,1 s dengan sebaran Poisson. Alarm menyala bila jumlah cacah dalam jendela 0,5 s melebihi latar + k·σ. Angka dipilih untuk memperlihatkan tren, bukan spesifikasi RPM tertentu; nilainya bisa dikalibrasi dari hasil PHITS.</p>
+  </details>
+
+  <div class="runbar">
+    <div class="in">
+      <button class="btn primary" id="run" type="button">Lewatkan truk</button>
+      <button class="btn" id="reset" type="button">Reset</button>
+      <label class="chk"><input type="checkbox" id="snd"> Suara alarm</label>
+    </div>
+  </div>
+</main>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var W0 = -9, W1 = 9, HY = 4.2, PANEL_Y = 2.3, H_OFF = 0.8;
+  var BG = 150, DT = 0.1, NWIN = 5, C0 = 8;
+  var SRC = {
+    none: { g: 0, name: 'Tanpa sumber' },
+    cs: { g: 1, hvlPb: 6.5, hvlFe: 16, name: 'Cs-137' },
+    co: { g: 3.9, hvlPb: 12, hvlFe: 21, name: 'Co-60' }
+  };
+  var S = { src: 'cs', exp: 2, pb: 0, cargo: 0, off: 0, spd: 8, k: 4, mission: false, sound: false };
+  var phase = 'idle', run = null, idleX = -5.5, idleC = [], log = [], runN = 0, lastResult = null;
+  var C = {};
+
+  var nf0 = function (n) { return Math.round(n).toLocaleString('id-ID'); };
+  var nf1 = function (n) { return n.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 }); };
+  var nfs = function (n) { return n.toLocaleString('id-ID', { maximumSignificantDigits: 2 }); };
+
+  function refreshColors() {
+    var cs = getComputedStyle(document.documentElement);
+    ['bg', 'surface', 'surface-2', 'road', 'ink', 'muted', 'line', 'accent', 'alarm', 'ok', 'amber'].forEach(function (n) {
+      C[n] = cs.getPropertyValue('--' + n).trim() || '#888';
+    });
+  }
+
+  /* ---------- model fisika ---------- */
+  function actMBq() { return S.src === 'none' ? 0 : Math.pow(10, S.exp); }
+  function att() {
+    var s = SRC[S.src];
+    if (!s.hvlPb) return { pb: 1, cg: 1, t: 1 };
+    var pb = Math.exp(-Math.LN2 / s.hvlPb * S.pb);
+    var cg = Math.exp(-Math.LN2 / s.hvlFe * S.cargo);
+    return { pb: pb, cg: cg, t: pb * cg };
+  }
+  function net(x) {
+    if (S.src === 'none') return 0;
+    var a = att().t * actMBq() * SRC[S.src].g * C0, r = 0;
+    var dys = [S.off + PANEL_Y, PANEL_Y - S.off];
+    for (var i = 0; i < 2; i++) r += a / (x * x + dys[i] * dys[i] + H_OFF * H_OFF);
+    return r;
+  }
+  function vms() { return S.spd / 3.6; }
+  function expWin(x) {
+    var s = 0;
+    for (var j = 0; j < NWIN; j++) s += BG + net(x - vms() * DT * j);
+    return s / NWIN;
+  }
+  function thrCount() { var b = BG * DT * NWIN; return b + S.k * Math.sqrt(b); }
+  function thrCps() { return thrCount() / (DT * NWIN); }
+  function gauss() { return Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(2 * Math.PI * Math.random()); }
+  function pois(m) {
+    if (m < 30) { var L = Math.exp(-m), k = 0, p = 1; do { k++; p *= Math.random(); } while (p > L); return k - 1; }
+    return Math.max(0, Math.round(m + Math.sqrt(m) * gauss()));
+  }
+  function scan() {
+    var ep = 0, ip = 0;
+    for (var x = W0; x <= W1; x += 0.1) { ep = Math.max(ep, expWin(x) - BG); ip = Math.max(ip, net(x)); }
+    return { ep: ep, ip: ip };
+  }
+
+  /* ---------- kanvas ---------- */
+  function setup(cv, aspect) {
+    var w = cv.clientWidth || 600, dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var pw = Math.round(w * dpr), ph = Math.round(w * aspect * dpr);
+    if (cv.width !== pw || cv.height !== ph) { cv.width = pw; cv.height = ph; }
+    var ctx = cv.getContext('2d');
+    ctx.setTransform(pw / w, 0, 0, pw / w, 0, 0);
+    return { ctx: ctx, w: w, h: w * aspect };
+  }
+  function rr(ctx, x, y, w, h, r) {
+    ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h); ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r); ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
+  }
+  function curX() { return phase === 'idle' ? idleX : run.xt; }
+  function alarmNow() { return phase === 'run' && run && run.alarmNow; }
+
+  function drawScene() {
+    var o = setup($('scene'), (2 * HY) / (W1 - W0)), ctx = o.ctx, w = o.w, h = o.h;
+    var sx = w / (W1 - W0);
+    var X = function (x) { return (x - W0) * sx; }, Y = function (y) { return (y + HY) * sx; };
+    ctx.fillStyle = C.surface; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = C.road; ctx.fillRect(0, Y(-1.95), w, 3.9 * sx);
+    ctx.strokeStyle = C.line; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, Y(-1.95)); ctx.lineTo(w, Y(-1.95)); ctx.moveTo(0, Y(1.95)); ctx.lineTo(w, Y(1.95)); ctx.stroke();
+    ctx.save(); ctx.setLineDash([sx * 0.7, sx * 0.6]); ctx.globalAlpha = 0.6; ctx.strokeStyle = C.muted;
+    ctx.beginPath(); ctx.moveTo(0, Y(0)); ctx.lineTo(w, Y(0)); ctx.stroke(); ctx.restore();
+
+    var xt = curX(), present = S.src !== 'none';
+    var al = alarmNow();
+
+    /* panel */
+    var panels = [-1, 1];
+    panels.forEach(function (sg) {
+      var py = sg * PANEL_Y;
+      ctx.save();
+      if (al) { ctx.shadowColor = C.alarm; ctx.shadowBlur = 18; }
+      ctx.fillStyle = C.ink; rr(ctx, X(-0.4), Y(py - 0.3), 0.8 * sx, 0.6 * sx, 3); ctx.fill();
+      ctx.restore();
+      ctx.fillStyle = C.accent; ctx.globalAlpha = 0.45;
+      ctx.fillRect(X(-0.32), Y(py - sg * 0.05 - 0.09), 0.64 * sx, 0.18 * sx); ctx.globalAlpha = 1;
+      ctx.fillStyle = al ? C.alarm : C.ok;
+      ctx.beginPath(); ctx.arc(X(0.28), Y(py + sg * 0.2), Math.max(2.5, 0.07 * sx), 0, 7); ctx.fill();
+    });
+    ctx.font = '500 10px "IBM Plex Mono", monospace'; ctx.fillStyle = C.muted; ctx.textAlign = 'left';
+    ctx.fillText('PANEL A', X(0.6), Y(-PANEL_Y) + 3);
+    ctx.fillText('PANEL B', X(0.6), Y(PANEL_Y) + 3);
+
+    /* truk */
+    var cx0 = X(xt - 3), cw = 6 * sx, cy0 = Y(-1.25), ch = 2.5 * sx;
+    ctx.fillStyle = C.surface; rr(ctx, cx0, cy0, cw, ch, 3); ctx.fill();
+    if (S.cargo > 0) { ctx.save(); ctx.globalAlpha = 0.12 + 0.3 * (S.cargo / 120); ctx.fillStyle = C.ink; rr(ctx, cx0 + 3, cy0 + 3, cw - 6, ch - 6, 2); ctx.fill(); ctx.restore(); }
+    ctx.strokeStyle = C.ink; ctx.globalAlpha = 0.8; ctx.lineWidth = 1.4; rr(ctx, cx0, cy0, cw, ch, 3); ctx.stroke(); ctx.globalAlpha = 0.25; ctx.lineWidth = 1;
+    ctx.beginPath(); for (var i = 1; i < 12; i++) { var lx = cx0 + cw * i / 12; ctx.moveTo(lx, cy0 + 4); ctx.lineTo(lx, cy0 + ch - 4); } ctx.stroke(); ctx.globalAlpha = 1;
+    ctx.fillStyle = C.muted; rr(ctx, X(xt + 3.15), Y(-1.05), 1.95 * sx, 2.1 * sx, 4); ctx.fill();
+    ctx.fillStyle = C.surface; ctx.globalAlpha = 0.75; ctx.fillRect(X(xt + 4.35), Y(-0.85), 0.55 * sx, 1.7 * sx); ctx.globalAlpha = 1;
+
+    /* sumber */
+    if (present) {
+      var a = att(), sy = S.off, r0 = (1.0 + 0.45 * S.exp) * sx;
+      var g = ctx.createRadialGradient(X(xt), Y(sy), 0, X(xt), Y(sy), r0);
+      var strength = Math.min(1, 0.25 + 0.75 * a.t);
+      g.addColorStop(0, C.amber); g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.save(); ctx.globalAlpha = 0.5 * strength; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(X(xt), Y(sy), r0, 0, 7); ctx.fill(); ctx.restore();
+      if (S.pb > 0) {
+        ctx.strokeStyle = C.muted; ctx.lineWidth = sx * (0.05 + 0.13 * S.pb / 60);
+        ctx.beginPath(); ctx.arc(X(xt), Y(sy), 0.34 * sx, 0, 7); ctx.stroke();
+      }
+      ctx.fillStyle = C.amber; ctx.strokeStyle = C.ink; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(X(xt), Y(sy), Math.max(3, 0.16 * sx), 0, 7); ctx.fill(); ctx.stroke();
+
+      if (Math.abs(xt) < 6.5) {
+        ctx.save(); ctx.setLineDash([4, 4]); ctx.strokeStyle = C.muted; ctx.lineWidth = 1; ctx.font = '500 10px "IBM Plex Mono", monospace'; ctx.textAlign = 'center';
+        [-1, 1].forEach(function (sg) {
+          var py = sg * (PANEL_Y - 0.3), d = Math.hypot(xt, py - sy);
+          ctx.beginPath(); ctx.moveTo(X(xt), Y(sy)); ctx.lineTo(X(0), Y(py)); ctx.stroke();
+          var mx = X(xt / 2), my = Y((sy + py) / 2) + (sg < 0 ? -4 : 12);
+          ctx.setLineDash([]); ctx.lineWidth = 3; ctx.strokeStyle = C.road; ctx.strokeText(nf1(d) + ' m', mx, my);
+          ctx.fillStyle = C.ink; ctx.fillText(nf1(d) + ' m', mx, my);
+          ctx.setLineDash([4, 4]); ctx.strokeStyle = C.muted; ctx.lineWidth = 1;
+        });
+        ctx.restore();
+      }
+    }
+
+    /* skala dan arah */
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(10, h - 12); ctx.lineTo(10 + 2 * sx, h - 12); ctx.stroke();
+    ctx.fillStyle = C.muted; ctx.font = '500 10px "IBM Plex Mono", monospace'; ctx.textAlign = 'left'; ctx.fillText('2 m', 10, h - 17);
+    ctx.textAlign = 'right'; ctx.fillText('arah gerak →', w - 10, h - 10);
+  }
+
+  function ticks(ymax) {
+    var raw = ymax / 4, mag = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / mag;
+    var step = (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * mag;
+    return { step: step, top: Math.ceil(ymax / step) * step };
+  }
+
+  function drawGraph() {
+    var o = setup($('graph'), 0.4), ctx = o.ctx, w = o.w, h = o.h;
+    var padT = 12, padB = 24, H = h - padT - padB, sx = w / (W1 - W0);
+    var X = function (x) { return (x - W0) * sx; };
+    var thr = thrCps();
+    var pv = [], pmax = 0;
+    for (var x = W0; x <= W1 + 1e-6; x += 0.1) { var e = expWin(x); pv.push([x, e]); if (e > pmax) pmax = e; }
+    var ymax = Math.max(thr * 1.35, pmax * 1.12, run ? run.peak * 1.1 : 0);
+    var T = ticks(ymax); ymax = T.top;
+    var Yv = function (v) { return padT + (1 - v / ymax) * H; };
+    ctx.fillStyle = C.surface; ctx.fillRect(0, 0, w, h);
+
+    ctx.font = '400 10px "IBM Plex Mono", monospace'; ctx.textAlign = 'left';
+    for (var v = 0; v <= ymax + 1e-6; v += T.step) {
+      ctx.strokeStyle = C.line; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, Yv(v)); ctx.lineTo(w, Yv(v)); ctx.stroke();
+      ctx.fillStyle = C.muted; ctx.fillText(nf0(v), 6, Yv(v) - 3);
+    }
+    ctx.textAlign = 'center';
+    [-8, -4, 0, 4, 8].forEach(function (t) {
+      ctx.fillStyle = C.muted; ctx.fillText(t === 0 ? 'panel' : String(t), X(t), h - 8);
+      ctx.strokeStyle = C.line; ctx.beginPath(); ctx.moveTo(X(t), padT + H); ctx.lineTo(X(t), padT + H + 4); ctx.stroke();
+    });
+
+    ctx.save(); ctx.beginPath(); ctx.rect(0, padT - 2, w, H + 4); ctx.clip();
+    /* teoritis */
+    ctx.save();
+    if (phase === 'idle') ctx.setLineDash([5, 4]);
+    ctx.strokeStyle = C.ink; ctx.globalAlpha = phase === 'idle' ? 0.65 : 0.4; ctx.lineWidth = 1.4;
+    ctx.beginPath(); pv.forEach(function (p, i) { if (i) ctx.lineTo(X(p[0]), Yv(p[1])); else ctx.moveTo(X(p[0]), Yv(p[1])); }); ctx.stroke();
+    ctx.restore();
+    /* terukur */
+    if (run && run.pts.length > 1) {
+      var pts = run.pts;
+      var gr = ctx.createLinearGradient(0, padT, 0, padT + H); gr.addColorStop(0, C.accent); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.save(); ctx.globalAlpha = 0.28; ctx.fillStyle = gr;
+      ctx.beginPath(); ctx.moveTo(X(pts[0].x), Yv(0)); pts.forEach(function (p) { ctx.lineTo(X(p.x), Yv(p.c)); }); ctx.lineTo(X(pts[pts.length - 1].x), Yv(0)); ctx.closePath(); ctx.fill(); ctx.restore();
+      ctx.strokeStyle = C.accent; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+      ctx.beginPath(); pts.forEach(function (p, i) { if (i) ctx.lineTo(X(p.x), Yv(p.c)); else ctx.moveTo(X(p.x), Yv(p.c)); }); ctx.stroke();
+      ctx.fillStyle = C.alarm;
+      pts.forEach(function (p) { if (p.a) { ctx.beginPath(); ctx.arc(X(p.x), Yv(p.c), 3, 0, 7); ctx.fill(); } });
+    }
+    if (phase === 'run') { ctx.strokeStyle = C.accent; ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.moveTo(X(run.xt), padT); ctx.lineTo(X(run.xt), padT + H); ctx.stroke(); ctx.globalAlpha = 1; }
+    ctx.restore();
+
+    /* latar dan ambang */
+    ctx.save(); ctx.setLineDash([6, 4]); ctx.lineWidth = 1.4;
+    ctx.strokeStyle = C.muted; ctx.beginPath(); ctx.moveTo(0, Yv(BG)); ctx.lineTo(w, Yv(BG)); ctx.stroke();
+    ctx.strokeStyle = C.alarm; ctx.beginPath(); ctx.moveTo(0, Yv(thr)); ctx.lineTo(w, Yv(thr)); ctx.stroke();
+    ctx.restore();
+    ctx.textAlign = 'right'; ctx.font = '500 10px "IBM Plex Mono", monospace';
+    ctx.fillStyle = C.alarm; ctx.fillText('ambang ' + nf0(thr), w - 6, Yv(thr) - 4);
+    ctx.fillStyle = C.muted; ctx.fillText('latar ' + BG, w - 6, Yv(BG) + 12);
+  }
+
+  function drawAll() { drawScene(); drawGraph(); }
+
+  /* ---------- keluaran angka ---------- */
+  function setStatus(tone, text) { $('stat').setAttribute('data-tone', tone); $('r-stat').textContent = text; }
+  function setCps(v, label) { $('r-cps').textContent = nf0(v); if (label) $('rl-cps').textContent = label; }
+  function setThr() { $('r-thr').textContent = nf0(thrCps()); }
+
+  var ac = null;
+  function beep() {
+    if (!S.sound) return;
+    try {
+      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      var o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'square'; o.frequency.value = 880; g.gain.value = 0.05;
+      o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + 0.12);
+    } catch (e) {}
+  }
+
+  /* ---------- jalannya simulasi ---------- */
+  function seedIdle() {
+    idleC = [];
+    for (var i = 0; i < NWIN; i++) idleC.push(pois((BG + net(idleX)) * DT));
+  }
+  function setControlsDisabled(d) {
+    $('controls').disabled = d;
+    $('run').disabled = d; $('reset').disabled = d;
+    $('run').textContent = d ? 'Truk melaju…' : 'Lewatkan truk';
+  }
+  function startRun() {
+    if (phase === 'run') return;
+    var v = vms(), x0 = idleX;
+    run = { xt: x0, acc: 0, counts: [], E: [], pts: [], alarmed: false, firstX: null, peak: 0, alarmNow: false, last: null };
+    for (var j = NWIN - 1; j >= 0; j--) { var e = BG + net(x0 - v * DT * j); run.E.push(e); run.counts.push(pois(e * DT)); }
+    phase = 'run'; setControlsDisabled(true);
+    setStatus('run', 'Memindai'); setCps(BG, 'Cacah (cps)');
+    requestAnimationFrame(loop);
+  }
+  function sample() {
+    var e = BG + net(run.xt);
+    run.E.push(e); run.counts.push(pois(e * DT));
+    if (run.E.length > NWIN) { run.E.shift(); run.counts.shift(); }
+    var sum = 0, es = 0;
+    for (var i = 0; i < NWIN; i++) { sum += run.counts[i]; es += run.E[i]; }
+    var cps = sum / (DT * NWIN), alarm = sum > thrCount();
+    run.pts.push({ x: run.xt, c: cps, e: es / NWIN, a: alarm });
+    if (cps > run.peak) run.peak = cps;
+    if (alarm) { run.alarmed = true; if (run.firstX == null) run.firstX = run.xt; if (!run.alarmNow) beep(); }
+    run.alarmNow = alarm;
+    setCps(cps);
+    setStatus(alarm ? 'alarm' : 'run', alarm ? 'ALARM' : 'Memindai');
+  }
+  function loop(ts) {
+    if (phase !== 'run') return;
+    if (run.last == null) run.last = ts;
+    var dt = Math.min(0.05, (ts - run.last) / 1000); run.last = ts;
+    run.xt += vms() * dt; run.acc += dt;
+    while (run.acc >= DT) { run.acc -= DT; sample(); }
+    drawAll();
+    if (run.xt > 9.3) { finish(); return; }
+    requestAnimationFrame(loop);
+  }
+
+  function finish() {
+    phase = 'done'; run.alarmNow = false;
+    setControlsDisabled(false); applyMissionLock();
+    var present = S.src !== 'none', a = att(), thr = thrCps(), sc = scan();
+    var r = { n: ++runN, src: SRC[S.src].name, pb: S.pb, cargo: S.cargo, peak: run.peak, alarmed: run.alarmed };
+    var tone, title, text;
+    if (present && run.alarmed) {
+      tone = 'alarm'; title = 'Terdeteksi';
+      var fx = run.firstX;
+      text = 'Alarm mulai berbunyi saat sumber berada ' + nf1(Math.abs(fx)) + ' m ' + (fx < 0 ? 'sebelum' : 'setelah') + ' panel. Sinyal bersih melewati ambang meski sudah diredam ke ' + nfs(a.t * 100) + '%.';
+    } else if (present) {
+      tone = 'warn'; title = 'Tidak terdeteksi';
+      var fs = [{ n: 'perisai timbal', f: a.pb }, { n: 'muatan kontainer', f: a.cg }];
+      var rt = sc.ip > 0 ? sc.ep / sc.ip : 1;
+      if (rt < 0.7) fs.push({ n: 'kecepatan tinggi (sinyal terbagi di jendela 0,5 s)', f: rt });
+      fs.sort(function (p, q) { return p.f - q.f; });
+      var unsh = a.t > 0 ? sc.ep / a.t : 0;
+      text = 'Puncak teoritis hanya ' + nf0(sc.ep) + ' cps di atas latar, sedangkan ambang butuh ' + nf0(thr - BG) + ' cps. ' +
+        (fs[0].f < 0.95 ? 'Peredam terkuat: ' + fs[0].n + ' (×' + nfs(fs[0].f) + '). ' : '') +
+        (unsh < thr - BG ? 'Tanpa peredam pun puncaknya (' + nf0(unsh) + ' cps) masih di bawah ambang, jadi aktivitas atau jaraknya memang terlalu kecil.' : 'Sumber ini akan terdeteksi bila peredamnya dikurangi.');
+    } else if (run.alarmed) {
+      tone = 'warn'; title = 'Alarm palsu';
+      text = 'Tidak ada sumber, tetapi fluktuasi acak latar melewati ambang. Menaikkan k mengurangi kejadian ini, dengan akibat sumber lemah makin sulit terdeteksi.';
+    } else {
+      tone = 'ok'; title = 'Normal';
+      text = 'Hanya latar yang terbaca dan tidak ada alarm. Coba pasang sumber atau turunkan k untuk melihat alarm palsu.';
+    }
+    if (S.mission) text += ' ' + (run.alarmed ? 'Misi gagal: sumber terdeteksi.' : 'Misi berhasil: sumber lolos. Sistem nyata biasanya menambah lapisan pemeriksaan lain untuk menutup celah seperti ini.');
+    r.tone = tone; r.title = title;
+    log.unshift(r); if (log.length > 6) log.pop();
+    lastResult = { tone: tone, title: title, text: text, peak: run.peak, theo: BG + sc.ep, thr: thr, a: a, present: present };
+    renderResult();
+    setCps(run.peak, 'Puncak (cps)');
+    setStatus(run.alarmed ? (present ? 'alarm' : 'warn') : (present ? 'warn' : 'ready'), run.alarmed ? 'Alarm' : (present ? 'Lolos' : 'Normal'));
+    drawAll();
+  }
+
+  /* ---------- hasil ---------- */
+  function renderResult() {
+    var el = $('result');
+    if (!lastResult) {
+      el.innerHTML = '<h2 class="rh">Belum ada hasil</h2><p>Tekan <strong>Lewatkan truk</strong>. Garis putus-putus di grafik memperkirakan cacah yang akan terbaca; hasil nyata bergoyang karena sifat acak peluruhan.</p>';
+      return;
+    }
+    var L = lastResult, rows = log.map(function (r) {
+      var cls = r.tone === 'alarm' ? 't-alarm' : r.tone === 'ok' ? 't-ok' : 't-warn';
+      return '<tr><td>' + r.n + '</td><td>' + r.src + '</td><td>' + r.pb + ' mm</td><td>' + (r.cargo ? r.cargo + ' mm Fe' : 'kosong') + '</td><td>' + nf0(r.peak) + '</td><td class="' + cls + '">' + r.title + '</td></tr>';
+    }).join('');
+    el.setAttribute('data-tone', L.tone === 'warn' ? 'warn' : L.tone);
+    el.innerHTML = '<h2 class="rh">' + L.title + '</h2><p>' + L.text + '</p>' +
+      '<dl class="stats"><div><dt>Puncak terukur</dt><dd>' + nf0(L.peak) + ' cps</dd></div><div><dt>Puncak teoritis</dt><dd>' + nf0(L.theo) + ' cps</dd></div><div><dt>Ambang</dt><dd>' + nf0(L.thr) + ' cps</dd></div><div><dt>Redaman total</dt><dd>' + (L.present ? '×' + nfs(L.a.t) : '—') + '</dd></div></dl>' +
+      '<div class="logwrap"><table><thead><tr><th>Run</th><th>Sumber</th><th>Timbal</th><th>Muatan</th><th>Puncak</th><th>Hasil</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+  }
+
+  /* ---------- kontrol ---------- */
+  function falseAlarmText(k) {
+    var phi = Math.exp(-k * k / 2) / Math.sqrt(2 * Math.PI);
+    var q = phi / k * (1 - 1 / (k * k) + 3 / Math.pow(k, 4));
+    var t = 0.5 / q, s;
+    if (t < 90) s = nf0(t) + ' detik';
+    else if (t < 5400) s = nf0(t / 60) + ' menit';
+    else if (t < 129600) s = nf0(t / 3600) + ' jam';
+    else if (t < 6e7) s = nf0(t / 86400) + ' hari';
+    else s = nf0(t / 31557600) + ' tahun';
+    return 'Perkiraan kasar: satu alarm palsu tiap ±' + s + ' pemantauan.';
+  }
+  function readInputs() {
+    var r = document.querySelector('input[name=src]:checked');
+    S.src = r ? r.value : 'cs';
+    S.exp = +$('act').value; S.pb = +$('pb').value; S.cargo = +$('cargo').value;
+    S.off = +$('off').value; S.spd = +$('spd').value; S.k = +$('k').value;
+    var A = Math.pow(10, S.exp);
+    $('actV').textContent = S.src === 'none' ? '—' : (A >= 1000 ? nf0(A / 1000) + ' GBq' : nf0(A) + ' MBq');
+    $('pbV').textContent = S.pb + ' mm';
+    $('offV').textContent = Math.abs(S.off) < 0.05 ? 'tengah' : nf1(Math.abs(S.off)) + ' m ke panel ' + (S.off > 0 ? 'B' : 'A');
+    $('spdV').textContent = S.spd + ' km/jam';
+    $('kV').textContent = nf1(S.k) + ' σ';
+    $('fa').textContent = falseAlarmText(S.k);
+    $('act').disabled = S.src === 'none' || S.mission;
+    setThr();
+  }
+  function toIdle() {
+    if (phase === 'run') return;
+    phase = 'idle'; run = null; seedIdle();
+    setStatus('ready', 'Siaga'); setCps(BG, 'Cacah (cps)');
+    drawAll();
+  }
+  function onChange() { readInputs(); toIdle(); }
+
+  function applyMissionLock() {
+    var lock = S.mission;
+    document.querySelectorAll('input[name=src]').forEach(function (i) { i.disabled = lock; });
+    $('act').disabled = lock || S.src === 'none';
+    $('missionBar').hidden = !lock;
+    $('missionOn').hidden = lock;
+  }
+  function setMission(on) {
+    S.mission = on;
+    if (on) { $('src-cs').checked = true; $('act').value = 2; }
+    readInputs(); applyMissionLock(); toIdle();
+  }
+
+  var PRESETS = {
+    'cs-bare': { src: 'cs', act: 2, pb: 0, cargo: 0, off: 0, spd: 8, k: 4 },
+    'co-lead': { src: 'co', act: 2, pb: 30, cargo: 0, off: 0, spd: 8, k: 4 },
+    'cs-cargo': { src: 'cs', act: 2, pb: 0, cargo: 120, off: 0, spd: 8, k: 4 },
+    'fast': { src: 'cs', act: 2, pb: 10, cargo: 0, off: 0, spd: 30, k: 4 },
+    'bg': { src: 'none', act: 2, pb: 0, cargo: 0, off: 0, spd: 8, k: 3 }
+  };
+  function applyPreset(name) {
+    var p = PRESETS[name]; if (!p || phase === 'run') return;
+    if (S.mission) setMission(false);
+    $('src-' + p.src).checked = true;
+    $('act').value = p.act; $('pb').value = p.pb; $('cargo').value = p.cargo;
+    $('off').value = p.off; $('spd').value = p.spd; $('k').value = p.k;
+    readInputs(); toIdle(); startRun();
+  }
+
+  /* ---------- pemasangan ---------- */
+  document.querySelectorAll('#controls input, #controls select').forEach(function (el) {
+    el.addEventListener('input', onChange); el.addEventListener('change', onChange);
+  });
+  document.querySelectorAll('[data-preset]').forEach(function (b) {
+    b.addEventListener('click', function () { applyPreset(b.getAttribute('data-preset')); });
+  });
+  $('run').addEventListener('click', function () { readInputs(); if (phase === 'done') { phase = 'idle'; run = null; } startRun(); });
+  $('reset').addEventListener('click', function () { lastResult = null; log = []; runN = 0; renderResult(); $('result').removeAttribute('data-tone'); toIdle(); });
+  $('snd').addEventListener('change', function () { S.sound = $('snd').checked; if (S.sound) beep(); });
+  $('missionOn').addEventListener('click', function () { setMission(true); });
+  $('missionOff').addEventListener('click', function () { setMission(false); });
+
+  setInterval(function () {
+    if (phase !== 'idle') return;
+    idleC.shift(); idleC.push(pois((BG + net(idleX)) * DT));
+    var s = 0; for (var i = 0; i < idleC.length; i++) s += idleC[i];
+    setCps(s / (DT * NWIN));
+  }, 100);
+
+  function redraw() { refreshColors(); drawAll(); }
+  try { new ResizeObserver(function () { drawAll(); }).observe(document.querySelector('.stage')); } catch (e) {}
+  try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', redraw); } catch (e) {}
+  try { new MutationObserver(redraw).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] }); } catch (e) {}
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(redraw);
+
+  refreshColors(); readInputs(); seedIdle(); renderResult(); drawAll();
+})();
+</script>
+
+</body></html>
